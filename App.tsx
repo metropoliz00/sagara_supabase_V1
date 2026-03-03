@@ -982,7 +982,8 @@ const App: React.FC = () => {
           loan.books.forEach(bookName => {
               const itemIndex = currentInventory.findIndex(i => i.name === bookName);
               if (itemIndex !== -1) {
-                  currentInventory[itemIndex].stock = Math.max(0, currentInventory[itemIndex].stock - loan.qty);
+                  // Decrease by 1 per book, as requested
+                  currentInventory[itemIndex].stock = Math.max(0, currentInventory[itemIndex].stock - 1);
                   inventoryChanged = true;
               }
           });
@@ -992,7 +993,8 @@ const App: React.FC = () => {
           loan.books.forEach(bookName => {
               const itemIndex = currentInventory.findIndex(i => i.name === bookName);
               if (itemIndex !== -1) {
-                  currentInventory[itemIndex].stock = currentInventory[itemIndex].stock + loan.qty;
+                  // Increase by 1 per book
+                  currentInventory[itemIndex].stock = currentInventory[itemIndex].stock + 1;
                   inventoryChanged = true;
               }
           });
@@ -1032,7 +1034,8 @@ const App: React.FC = () => {
                   loanToDelete.books.forEach(bookName => {
                       const itemIndex = currentInventory.findIndex(i => i.name === bookName);
                       if (itemIndex !== -1) {
-                          currentInventory[itemIndex].stock = currentInventory[itemIndex].stock + loanToDelete.qty;
+                          // Increase by 1 per book
+                          currentInventory[itemIndex].stock = currentInventory[itemIndex].stock + 1;
                           inventoryChanged = true;
                       }
                   });
