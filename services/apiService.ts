@@ -810,25 +810,6 @@ export const apiService = {
     if (error) throw error;
   },
 
-  // --- Academic Calendar ---
-  getAcademicCalendar: async (id: string = 'global'): Promise<AcademicCalendarData> => {
-    const { data, error } = await supabase
-      .from('academic_calendar')
-      .select('data')
-      .eq('id', id)
-      .single();
-    
-    if (error || !data) return {};
-    return data.data as AcademicCalendarData;
-  },
-  saveAcademicCalendar: async (data: AcademicCalendarData, id: string = 'global'): Promise<void> => {
-    const { error } = await supabase
-      .from('academic_calendar')
-      .upsert({ id, data, updated_at: new Date().toISOString() });
-    
-    if (error) throw error;
-  },
-
   // --- Book Loans ---
   getBookLoans: async (currentUser: User | null): Promise<BookLoan[]> => {
     const { data, error } = await supabase.from('book_loans').select('*');
