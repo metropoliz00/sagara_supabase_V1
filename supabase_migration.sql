@@ -159,7 +159,7 @@ CREATE TABLE profiles (
 
 -- 9. Inventory table
 CREATE TABLE inventory (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY, -- Changed from UUID to TEXT to support client-side IDs
   class_id TEXT NOT NULL,
   name TEXT NOT NULL,
   condition TEXT,
@@ -169,7 +169,7 @@ CREATE TABLE inventory (
 
 -- 10. Guests table
 CREATE TABLE guests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY, -- Changed from UUID to TEXT to support client-side IDs
   class_id TEXT NOT NULL,
   date DATE NOT NULL,
   time TEXT,
@@ -178,6 +178,32 @@ CREATE TABLE guests (
   purpose TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- ... (skip to end of file to add policies)
+
+-- Enable RLS for Class Config
+ALTER TABLE class_config ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable all access for all users" ON "public"."class_config"
+AS PERMISSIVE FOR ALL
+TO public
+USING (true)
+WITH CHECK (true);
+
+-- Enable RLS for Inventory
+ALTER TABLE inventory ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable all access for all users" ON "public"."inventory"
+AS PERMISSIVE FOR ALL
+TO public
+USING (true)
+WITH CHECK (true);
+
+-- Enable RLS for Guests
+ALTER TABLE guests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable all access for all users" ON "public"."guests"
+AS PERMISSIVE FOR ALL
+TO public
+USING (true)
+WITH CHECK (true);
 
 -- 11. Penilaian Sikap table
 CREATE TABLE penilaian_sikap (

@@ -584,9 +584,11 @@ export const apiService = {
     return data.map(i => ({ ...i, classId: i.class_id }));
   },
   saveInventory: async (item: InventoryItem): Promise<void> => {
-    const dbItem = { class_id: item.classId, name: item.name, condition: item.condition, qty: item.qty };
-    if (item.id) {
-      await supabase.from('inventory').update(dbItem).eq('id', item.id);
+    const dbItem = { id: item.id, class_id: item.classId, name: item.name, condition: item.condition, qty: item.qty };
+    const { data: existing } = await supabase.from('inventory').select('id').eq('id', item.id).single();
+    
+    if (existing) {
+      await supabase.from('inventory').update({ ...dbItem, id: undefined }).eq('id', item.id);
     } else {
       await supabase.from('inventory').insert([dbItem]);
     }
@@ -602,9 +604,11 @@ export const apiService = {
     return data.map(g => ({ ...g, classId: g.class_id }));
   },
   saveGuest: async (guest: Guest): Promise<void> => {
-    const dbGuest = { class_id: guest.classId, date: guest.date, time: guest.time, name: guest.name, agency: guest.agency, purpose: guest.purpose };
-    if (guest.id) {
-      await supabase.from('guests').update(dbGuest).eq('id', guest.id);
+    const dbGuest = { id: guest.id, class_id: guest.classId, date: guest.date, time: guest.time, name: guest.name, agency: guest.agency, purpose: guest.purpose };
+    const { data: existing } = await supabase.from('guests').select('id').eq('id', guest.id).single();
+    
+    if (existing) {
+      await supabase.from('guests').update({ ...dbGuest, id: undefined }).eq('id', guest.id);
     } else {
       await supabase.from('guests').insert([dbGuest]);
     }
