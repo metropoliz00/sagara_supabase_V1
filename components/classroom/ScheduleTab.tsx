@@ -142,9 +142,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, onSave, 
     setIsSaving(true);
     try {
       await onSave(localSchedule, localTimeSlots);
-      onShowNotification('Jadwal pelajaran berhasil disimpan!', 'success');
     } catch(e) {
-      onShowNotification('Gagal menyimpan jadwal.', 'error');
       console.error(e);
     } finally {
       setIsSaving(false);

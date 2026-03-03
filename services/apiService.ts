@@ -820,6 +820,40 @@ export const apiService = {
     }
   },
 
+  // --- Schedule ---
+  getSchedule: async (classId: string): Promise<ScheduleItem[]> => {
+    const { data, error } = await supabase.from('schedule').select('*').eq('class_id', classId);
+    if (error) {
+      console.error('Error fetching schedule:', error);
+      return [];
+    }
+    return data.map(s => ({ id: s.id, day: s.day, time: s.time, subject: s.subject }));
+  },
+  saveSchedule: async (classId: string, schedule: ScheduleItem[]): Promise<void> => {
+    // First, delete existing schedule for this class
+    const { error: deleteError } = await supabase.from('schedule').delete().eq('class_id', classId);
+    if (deleteError) {
+      console.error('Error deleting old schedule:', deleteError);
+      throw deleteError;
+    }
+
+    if (schedule.length === 0) return;
+
+    // Then insert new schedule
+    const dbSchedule = schedule.map(s => ({
+      class_id: classId,
+      day: s.day,
+      time: s.time,
+      subject: s.subject
+    }));
+
+    const { error: insertError } = await supabase.from('schedule').insert(dbSchedule);
+    if (insertError) {
+      console.error('Error saving schedule:', insertError);
+      throw insertError;
+    }
+  },
+
   // --- Book Loans ---
   getBookLoans: async (currentUser: User | null): Promise<BookLoan[]> => {
     const { data, error } = await supabase.from('book_loans').select('*');

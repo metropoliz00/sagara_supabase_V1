@@ -96,16 +96,23 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
     if (!classId) return;
     setIsLoading(true);
     try {
-        const [invData, guestData, configData, calendarData] = await Promise.all([
+        const [invData, guestData, configData, calendarData, scheduleData] = await Promise.all([
             apiService.getInventory(classId),
             apiService.getGuests(classId),
             apiService.getClassConfig(classId),
-            apiService.getAcademicCalendar('global')
+            apiService.getAcademicCalendar('global'),
+            apiService.getSchedule(classId)
         ]);
         setInventory(invData);
         setGuests(guestData.sort((a,b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)));
         
-        if (configData.schedule) setSchedule(configData.schedule);
+        // Use schedule from dedicated table if available, otherwise fallback to config
+        if (scheduleData && scheduleData.length > 0) {
+            setSchedule(scheduleData);
+        } else if (configData.schedule) {
+            setSchedule(configData.schedule);
+        }
+
         if (configData.piket) setPiketGroups(configData.piket);
         if (configData.seats) setSeatingLayouts(configData.seats);
         if (calendarData && Object.keys(calendarData).length > 0) {
@@ -198,10 +205,16 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
   const handleSaveScheduleAndTimes = async (newSchedule: ScheduleItem[], newTimeSlots: string[]) => {
     setSchedule(newSchedule);
     setTimeSlots(newTimeSlots);
-    await Promise.all([
-        apiService.saveClassConfig('SCHEDULE', newSchedule, classId),
-        apiService.saveClassConfig('TIME_SLOTS', newTimeSlots, classId)
-    ]);
+    try {
+        await Promise.all([
+            apiService.saveSchedule(classId, newSchedule),
+            apiService.saveClassConfig('TIME_SLOTS', newTimeSlots, classId)
+        ]);
+        onShowNotification('Jadwal pelajaran berhasil disimpan!', 'success');
+    } catch (e) {
+        console.error("Error saving schedule:", e);
+        onShowNotification('Gagal menyimpan jadwal.', 'error');
+    }
   };
 
   const handleSavePiket = async (newPiket: PiketGroup[]) => {

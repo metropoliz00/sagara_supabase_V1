@@ -379,6 +379,26 @@ TO public
 USING (true)
 WITH CHECK (true);
 
+-- 27. Schedule table
+CREATE TABLE IF NOT EXISTS schedule (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  class_id TEXT NOT NULL,
+  day TEXT NOT NULL,
+  time TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE schedule ENABLE ROW LEVEL SECURITY;
+
+-- Create policies to allow access for all users
+CREATE POLICY "Enable all access for all users" ON "public"."schedule"
+AS PERMISSIVE FOR ALL
+TO public
+USING (true)
+WITH CHECK (true);
+
 -- Insert default admin user
 INSERT INTO users (username, password, role, full_name, class_id)
 VALUES ('admin', '123456', 'admin', 'Administrator Utama', 'all')
