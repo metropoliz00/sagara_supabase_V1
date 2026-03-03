@@ -1,0 +1,852 @@
+/// <reference types="vite/client" />
+import { supabase } from './supabaseClient';
+import { 
+  Student, AgendaItem, GradeRecord, GradeData, BehaviorLog, Extracurricular, 
+  TeacherProfileData, SchoolProfileData, User, Holiday, InventoryItem, Guest, 
+  ScheduleItem, PiketGroup, SikapAssessment, KarakterAssessment, SeatingLayouts, 
+  AcademicCalendarData, EmploymentLink, LearningReport, LiaisonLog, PermissionRequest, 
+  LearningJournalEntry, SupportDocument, OrganizationStructure, SchoolAsset, 
+  BOSTransaction, LearningDocumentation, BookLoan, BookInventory 
+} from '../types';
+
+const isApiConfigured = () => {
+  return !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY;
+};
+
+export const apiService = {
+  isConfigured: isApiConfigured,
+
+  // --- Auth & Users ---
+  login: async (username: string, password?: string): Promise<User | null> => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', username)
+      .eq('password', password)
+      .single();
+    
+    if (error || !data) return null;
+    return {
+      ...data,
+      fullName: data.full_name,
+      birthInfo: data.birth_info,
+      classId: data.class_id,
+      studentId: data.student_id
+    } as User;
+  },
+
+  loginWithGoogle: async (email: string): Promise<User | null> => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+    
+    if (error || !data) return null;
+    return {
+      ...data,
+      fullName: data.full_name,
+      birthInfo: data.birth_info,
+      classId: data.class_id,
+      studentId: data.student_id
+    } as User;
+  },
+
+  getUsers: async (currentUser: User | null): Promise<User[]> => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*');
+    
+    if (error) return [];
+    return data.map(u => ({
+      ...u,
+      fullName: u.full_name,
+      birthInfo: u.birth_info,
+      classId: u.class_id,
+      studentId: u.student_id
+    }));
+  },
+
+  saveUser: async (user: User): Promise<User> => {
+    const dbUser = {
+      username: user.username,
+      password: user.password,
+      role: user.role,
+      full_name: user.fullName,
+      nip: user.nip,
+      nuptk: user.nuptk,
+      birth_info: user.birthInfo,
+      education: user.education,
+      position: user.position,
+      rank: user.rank,
+      class_id: user.classId,
+      email: user.email,
+      phone: user.phone,
+      address: user.address,
+      photo: user.photo,
+      signature: user.signature,
+      student_id: user.studentId
+    };
+
+    if (user.id) {
+      const { data, error } = await supabase
+        .from('users')
+        .update(dbUser)
+        .eq('id', user.id)
+        .select()
+        .single();
+      return error ? user : { ...data, fullName: data.full_name, classId: data.class_id };
+    } else {
+      const { data, error } = await supabase
+        .from('users')
+        .insert([dbUser])
+        .select()
+        .single();
+      return error ? user : { ...data, fullName: data.full_name, classId: data.class_id };
+    }
+  },
+
+  saveUserBatch: async (users: Omit<User, 'id'>[]): Promise<void> => {
+    const dbUsers = users.map(u => ({
+      username: u.username,
+      password: u.password,
+      role: u.role,
+      full_name: u.fullName,
+      nip: u.nip,
+      nuptk: u.nuptk,
+      birth_info: u.birthInfo,
+      education: u.education,
+      position: u.position,
+      rank: u.rank,
+      class_id: u.classId,
+      email: u.email,
+      phone: u.phone,
+      address: u.address,
+      photo: u.photo,
+      signature: u.signature,
+      student_id: u.studentId
+    }));
+    await supabase.from('users').insert(dbUsers);
+  },
+
+  deleteUser: async (id: string): Promise<void> => {
+    await supabase.from('users').delete().eq('id', id);
+  },
+
+  syncStudentAccounts: async (): Promise<{ status: string; message: string }> => {
+    return { status: 'success', message: 'Sync logic needs backend implementation or manual trigger' };
+  },
+
+  // --- Students ---
+  getStudents: async (currentUser: User | null): Promise<Student[]> => {
+    const { data, error } = await supabase.from('students').select('*');
+    if (error) return [];
+    return data.map(s => ({
+      ...s,
+      classId: s.class_id,
+      birthPlace: s.birth_place,
+      birthDate: s.birth_date,
+      fatherName: s.father_name,
+      fatherJob: s.father_job,
+      fatherEducation: s.father_education,
+      motherName: s.mother_name,
+      motherJob: s.mother_job,
+      motherEducation: s.mother_education,
+      parentName: s.parent_name,
+      parentPhone: s.parent_phone,
+      parentJob: s.parent_job,
+      economyStatus: s.economy_status,
+      bloodType: s.blood_type,
+      healthNotes: s.health_notes,
+      behaviorScore: Number(s.behavior_score),
+      attendance: {
+        present: Number(s.present),
+        sick: Number(s.sick),
+        permit: Number(s.permit),
+        alpha: Number(s.alpha)
+      },
+      teacherNotes: s.teacher_notes
+    }));
+  },
+
+  createStudent: async (student: Omit<Student, 'id'>): Promise<Student> => {
+    const dbStudent = {
+      class_id: student.classId,
+      nis: student.nis,
+      nisn: student.nisn,
+      name: student.name,
+      gender: student.gender,
+      birth_place: student.birthPlace,
+      birth_date: student.birthDate,
+      religion: student.religion,
+      address: student.address,
+      father_name: student.fatherName,
+      father_job: student.fatherJob,
+      father_education: student.fatherEducation,
+      mother_name: student.motherName,
+      mother_job: student.motherJob,
+      mother_education: student.motherEducation,
+      parent_name: student.parentName,
+      parent_phone: student.parentPhone,
+      parent_job: student.parentJob,
+      economy_status: student.economyStatus,
+      height: student.height,
+      weight: student.weight,
+      blood_type: student.bloodType,
+      health_notes: student.healthNotes,
+      hobbies: student.hobbies,
+      ambition: student.ambition,
+      achievements: student.achievements,
+      violations: student.violations,
+      behavior_score: student.behaviorScore,
+      photo: student.photo,
+      teacher_notes: student.teacherNotes
+    };
+    const { data, error } = await supabase.from('students').insert([dbStudent]).select().single();
+    return error ? { ...student, id: 'temp' } as Student : { ...data, classId: data.class_id } as unknown as Student;
+  },
+
+  createStudentBatch: async (students: Omit<Student, 'id'>[]): Promise<any> => {
+    const dbStudents = students.map(s => ({
+      class_id: s.classId,
+      nis: s.nis,
+      nisn: s.nisn,
+      name: s.name,
+      gender: s.gender,
+      birth_place: s.birthPlace,
+      birth_date: s.birthDate,
+      religion: s.religion,
+      address: s.address,
+      father_name: s.fatherName,
+      father_job: s.fatherJob,
+      father_education: s.fatherEducation,
+      mother_name: s.motherName,
+      mother_job: s.motherJob,
+      mother_education: s.motherEducation,
+      parent_name: s.parentName,
+      parent_phone: s.parentPhone,
+      parent_job: s.parentJob,
+      economy_status: s.economyStatus,
+      height: s.height,
+      weight: s.weight,
+      blood_type: s.bloodType,
+      health_notes: s.healthNotes,
+      hobbies: s.hobbies,
+      ambition: s.ambition,
+      achievements: s.achievements,
+      violations: s.violations,
+      behavior_score: s.behaviorScore,
+      photo: s.photo,
+      teacher_notes: s.teacherNotes
+    }));
+    return await supabase.from('students').insert(dbStudents);
+  },
+
+  updateStudent: async (student: Student): Promise<void> => {
+    const dbStudent = {
+      class_id: student.classId,
+      nis: student.nis,
+      nisn: student.nisn,
+      name: student.name,
+      gender: student.gender,
+      birth_place: student.birthPlace,
+      birth_date: student.birthDate,
+      religion: student.religion,
+      address: student.address,
+      father_name: student.fatherName,
+      father_job: student.fatherJob,
+      father_education: student.fatherEducation,
+      mother_name: student.motherName,
+      mother_job: student.motherJob,
+      mother_education: student.motherEducation,
+      parent_name: student.parentName,
+      parent_phone: student.parentPhone,
+      parent_job: student.parentJob,
+      economy_status: student.economyStatus,
+      height: student.height,
+      weight: student.weight,
+      blood_type: student.bloodType,
+      health_notes: student.healthNotes,
+      hobbies: student.hobbies,
+      ambition: student.ambition,
+      achievements: student.achievements,
+      violations: student.violations,
+      behavior_score: student.behaviorScore,
+      present: student.attendance.present,
+      sick: student.attendance.sick,
+      permit: student.attendance.permit,
+      alpha: student.attendance.alpha,
+      photo: student.photo,
+      teacher_notes: student.teacherNotes
+    };
+    await supabase.from('students').update(dbStudent).eq('id', student.id);
+  },
+
+  deleteStudent: async (id: string): Promise<void> => {
+    await supabase.from('students').delete().eq('id', id);
+  },
+
+  // --- Agendas ---
+  getAgendas: async (currentUser: User | null): Promise<AgendaItem[]> => {
+    const { data, error } = await supabase.from('agendas').select('*');
+    if (error) return [];
+    return data.map(a => ({ ...a, classId: a.class_id }));
+  },
+  createAgenda: async (agenda: AgendaItem): Promise<void> => {
+    await supabase.from('agendas').insert([{
+      class_id: agenda.classId,
+      title: agenda.title,
+      date: agenda.date,
+      time: agenda.time,
+      type: agenda.type,
+      completed: agenda.completed
+    }]);
+  },
+  updateAgenda: async (agenda: AgendaItem): Promise<void> => {
+    await supabase.from('agendas').update({
+      class_id: agenda.classId,
+      title: agenda.title,
+      date: agenda.date,
+      time: agenda.time,
+      type: agenda.type,
+      completed: agenda.completed
+    }).eq('id', agenda.id);
+  },
+  deleteAgenda: async (id: string): Promise<void> => {
+    await supabase.from('agendas').delete().eq('id', id);
+  },
+
+  // --- Grades ---
+  getGrades: async (currentUser: User | null): Promise<GradeRecord[]> => {
+    const { data, error } = await supabase.from('grades').select('*');
+    if (error) return [];
+    
+    const gradeMap: Record<string, GradeRecord> = {};
+    data.forEach(row => {
+      if (!gradeMap[row.student_id]) {
+        gradeMap[row.student_id] = {
+          studentId: row.student_id,
+          classId: row.class_id,
+          subjects: {}
+        };
+      }
+      gradeMap[row.student_id].subjects[row.subject_id] = {
+        sum1: Number(row.sum1),
+        sum2: Number(row.sum2),
+        sum3: Number(row.sum3),
+        sum4: Number(row.sum4),
+        sas: Number(row.sas)
+      };
+    });
+    return Object.values(gradeMap);
+  },
+  saveGrade: async (studentId: string, subjectId: string, gradeData: GradeData, classId: string): Promise<void> => {
+    const { error } = await supabase.from('grades').upsert({
+      student_id: studentId,
+      subject_id: subjectId,
+      class_id: classId,
+      sum1: gradeData.sum1,
+      sum2: gradeData.sum2,
+      sum3: gradeData.sum3,
+      sum4: gradeData.sum4,
+      sas: gradeData.sas
+    }, { onConflict: 'student_id,subject_id' });
+    if (error) console.error('Error saving grade:', error);
+  },
+
+  // --- Counseling ---
+  getCounselingLogs: async (currentUser: User | null): Promise<BehaviorLog[]> => {
+    const { data, error } = await supabase.from('counseling').select('*');
+    if (error) return [];
+    return data.map(l => ({
+      ...l,
+      classId: l.class_id,
+      studentId: l.student_id,
+      studentName: l.student_name
+    }));
+  },
+  createCounselingLog: async (log: BehaviorLog): Promise<void> => {
+    await supabase.from('counseling').insert([{
+      class_id: log.classId,
+      student_id: log.studentId,
+      student_name: log.studentName,
+      date: log.date,
+      type: log.type,
+      category: log.category,
+      description: log.description,
+      point: log.point,
+      emotion: log.emotion,
+      status: log.status
+    }]);
+  },
+
+  // --- Extracurriculars ---
+  getExtracurriculars: async (currentUser: User | null): Promise<Extracurricular[]> => {
+    const { data, error } = await supabase.from('extracurriculars').select('*');
+    if (error) return [];
+    return data.map(e => ({ ...e, classId: e.class_id }));
+  },
+  createExtracurricular: async (extra: Extracurricular): Promise<void> => {
+    await supabase.from('extracurriculars').insert([{
+      class_id: extra.classId,
+      name: extra.name,
+      category: extra.category,
+      schedule: extra.schedule,
+      coach: extra.coach,
+      members: extra.members
+    }]);
+  },
+  updateExtracurricular: async (extra: Extracurricular): Promise<void> => {
+    await supabase.from('extracurriculars').update({
+      class_id: extra.classId,
+      name: extra.name,
+      category: extra.category,
+      schedule: extra.schedule,
+      coach: extra.coach,
+      members: extra.members
+    }).eq('id', extra.id);
+  },
+  deleteExtracurricular: async (id: string): Promise<void> => {
+    await supabase.from('extracurriculars').delete().eq('id', id);
+  },
+
+  // --- Profiles ---
+  getProfiles: async (): Promise<{ teacher?: TeacherProfileData, school?: SchoolProfileData }> => {
+    const { data, error } = await supabase.from('profiles').select('*');
+    if (error) return {};
+    const profiles: any = {};
+    data.forEach(p => {
+      profiles[p.id] = p.data;
+    });
+    return profiles;
+  },
+  saveProfile: async (type: 'teacher' | 'school', data: any): Promise<void> => {
+    await supabase.from('profiles').upsert({ id: type, data });
+  },
+
+  // --- Holidays ---
+  getHolidays: async (currentUser: User | null): Promise<Holiday[]> => {
+    const { data, error } = await supabase.from('holidays').select('*');
+    if (error) return [];
+    return data.map(h => ({ ...h, classId: h.class_id }));
+  },
+  saveHolidayBatch: async (holidays: Omit<Holiday, 'id'>[]): Promise<void> => {
+    const dbHolidays = holidays.map(h => ({
+      class_id: h.classId,
+      date: h.date,
+      description: h.description,
+      type: h.type
+    }));
+    await supabase.from('holidays').insert(dbHolidays);
+  },
+  updateHoliday: async (holiday: Holiday): Promise<void> => {
+    await supabase.from('holidays').update({
+      class_id: holiday.classId,
+      date: holiday.date,
+      description: holiday.description,
+      type: holiday.type
+    }).eq('id', holiday.id);
+  },
+  deleteHoliday: async (id: string): Promise<void> => {
+    await supabase.from('holidays').delete().eq('id', id);
+  },
+
+  // --- Attendance ---
+  getAttendance: async (currentUser: User | null): Promise<any[]> => {
+    const { data, error } = await supabase.from('attendance').select('*');
+    if (error) return [];
+    const allRecords: any[] = [];
+    data.forEach(row => {
+      const parts = row.id.split('_');
+      const classId = parts[0];
+      const date = parts[1];
+      if (Array.isArray(row.records)) {
+        row.records.forEach((rec: any) => {
+          allRecords.push({ ...rec, date, classId });
+        });
+      }
+    });
+    return allRecords;
+  },
+  saveAttendance: async (date: string, records: any[]): Promise<void> => {
+    const classGroups: Record<string, any[]> = {};
+    records.forEach(r => {
+      if (!classGroups[r.classId]) classGroups[r.classId] = [];
+      classGroups[r.classId].push({ studentId: r.studentId, status: r.status, notes: r.notes });
+    });
+    for (const classId in classGroups) {
+      const id = `${classId}_${date}`;
+      await supabase.from('attendance').upsert({ id, records: classGroups[classId] });
+    }
+  },
+  saveAttendanceBatch: async (batchData: { date: string, records: any[] }[]): Promise<void> => {
+    for (const d of batchData) {
+      await apiService.saveAttendance(d.date, d.records);
+    }
+  },
+
+  // --- Sikap & Karakter ---
+  getSikapAssessments: async (currentUser: User | null): Promise<SikapAssessment[]> => {
+    const { data, error } = await supabase.from('penilaian_sikap').select('*');
+    if (error) return [];
+    return data.map(s => ({
+      ...s,
+      studentId: s.student_id,
+      classId: s.class_id,
+      penalaranKritis: Number(s.penalaran_kritis)
+    }));
+  },
+  saveSikapAssessment: async (studentId: string, classId: string, assessment: any): Promise<void> => {
+    await supabase.from('penilaian_sikap').upsert({
+      student_id: studentId,
+      class_id: classId,
+      keimanan: assessment.keimanan,
+      kewargaan: assessment.kewargaan,
+      penalaran_kritis: assessment.penalaranKritis,
+      kreativitas: assessment.kreativitas,
+      kolaborasi: assessment.kolaborasi,
+      kemandirian: assessment.kemandirian,
+      kesehatan: assessment.kesehatan,
+      komunikasi: assessment.komunikasi
+    });
+  },
+  getKarakterAssessments: async (currentUser: User | null): Promise<KarakterAssessment[]> => {
+    const { data, error } = await supabase.from('penilaian_karakter').select('*');
+    if (error) return [];
+    return data.map(k => ({
+      ...k,
+      studentId: k.student_id,
+      classId: k.class_id,
+      bangunPagi: k.bangun_pagi,
+      tidurAwal: k.tidur_awal
+    }));
+  },
+  saveKarakterAssessment: async (studentId: string, classId: string, assessment: any): Promise<void> => {
+    await supabase.from('penilaian_karakter').upsert({
+      student_id: studentId,
+      class_id: classId,
+      bangun_pagi: assessment.bangunPagi,
+      beribadah: assessment.beribadah,
+      berolahraga: assessment.berolahraga,
+      makan_sehat: assessment.makanSehat,
+      gemar_belajar: assessment.gemarBelajar,
+      bermasyarakat: assessment.bermasyarakat,
+      tidur_awal: assessment.tidurAwal,
+      catatan: assessment.catatan,
+      afirmasi: assessment.afirmasi
+    });
+  },
+
+  // --- Employment Links ---
+  getEmploymentLinks: async (): Promise<EmploymentLink[]> => {
+    const { data, error } = await supabase.from('employment_links').select('*');
+    if (error) return [];
+    return data;
+  },
+  saveEmploymentLink: async (link: any): Promise<void> => {
+    if (link.id) {
+      await supabase.from('employment_links').update(link).eq('id', link.id);
+    } else {
+      await supabase.from('employment_links').insert([link]);
+    }
+  },
+  deleteEmploymentLink: async (id: string): Promise<void> => {
+    await supabase.from('employment_links').delete().eq('id', id);
+  },
+
+  // --- Inventory ---
+  getInventory: async (classId: string): Promise<InventoryItem[]> => {
+    const query = supabase.from('inventory').select('*');
+    if (classId !== 'ALL') query.eq('class_id', classId);
+    const { data, error } = await query;
+    if (error) return [];
+    return data.map(i => ({ ...i, classId: i.class_id }));
+  },
+  saveInventory: async (item: InventoryItem): Promise<void> => {
+    const dbItem = { class_id: item.classId, name: item.name, condition: item.condition, qty: item.qty };
+    if (item.id) {
+      await supabase.from('inventory').update(dbItem).eq('id', item.id);
+    } else {
+      await supabase.from('inventory').insert([dbItem]);
+    }
+  },
+  deleteInventory: async (id: string, classId: string): Promise<any> => {
+    return await supabase.from('inventory').delete().eq('id', id);
+  },
+
+  // --- Guests ---
+  getGuests: async (classId: string): Promise<Guest[]> => {
+    const { data, error } = await supabase.from('guests').select('*').eq('class_id', classId);
+    if (error) return [];
+    return data.map(g => ({ ...g, classId: g.class_id }));
+  },
+  saveGuest: async (guest: Guest): Promise<void> => {
+    const dbGuest = { class_id: guest.classId, date: guest.date, time: guest.time, name: guest.name, agency: guest.agency, purpose: guest.purpose };
+    if (guest.id) {
+      await supabase.from('guests').update(dbGuest).eq('id', guest.id);
+    } else {
+      await supabase.from('guests').insert([dbGuest]);
+    }
+  },
+  deleteGuest: async (id: string, classId: string): Promise<any> => {
+    return await supabase.from('guests').delete().eq('id', id);
+  },
+
+  // --- Class Config (Schedule, Piket, Seating, KKTP) ---
+  getClassConfig: async (classId: string): Promise<{
+      schedule: ScheduleItem[], 
+      piket: PiketGroup[], 
+      seats: SeatingLayouts, 
+      kktp?: Record<string, number>, 
+      academicCalendar?: AcademicCalendarData, 
+      timeSlots?: string[], 
+      organization?: OrganizationStructure,
+      settings?: { showStudentRecap?: boolean; showSummativeToStudents?: boolean } 
+  }> => {
+     const defaultConfig = {schedule: [], piket: [], seats: { classical: [], groups: [], ushape: [] }, academicCalendar: {}, timeSlots: [], organization: { roles: {}, sections: [] }, settings: {} };
+     if (!classId) return defaultConfig;
+     
+     const { data, error } = await supabase.from('class_config').select('data').eq('class_id', classId).single();
+     if (error || !data) return defaultConfig;
+     return { ...defaultConfig, ...data.data };
+  },
+  saveClassConfig: async (key: string, data: any, classId: string): Promise<void> => {
+     const { data: existing } = await supabase.from('class_config').select('data').eq('class_id', classId).single();
+     const currentData = existing?.data || {};
+     currentData[key.toLowerCase()] = data;
+     await supabase.from('class_config').upsert({ class_id: classId, data: currentData });
+  },
+
+  // --- Learning Reports ---
+  getLearningReports: async (classId: string): Promise<LearningReport[]> => {
+    const { data, error } = await supabase.from('learning_reports').select('*').eq('class_id', classId);
+    if (error) return [];
+    return data.map(r => ({ ...r, classId: r.class_id, documentLink: r.document_link, teacherName: r.teacher_name }));
+  },
+  saveLearningReport: async (report: any): Promise<void> => {
+    const dbReport = {
+      class_id: report.classId,
+      date: report.date,
+      type: report.type,
+      subject: report.subject,
+      topic: report.topic,
+      document_link: report.documentLink,
+      teacher_name: report.teacherName
+    };
+    if (report.id) {
+      await supabase.from('learning_reports').update(dbReport).eq('id', report.id);
+    } else {
+      await supabase.from('learning_reports').insert([dbReport]);
+    }
+  },
+  deleteLearningReport: async (id: string, classId: string): Promise<void> => {
+    await supabase.from('learning_reports').delete().eq('id', id);
+  },
+
+  // --- Learning Journal ---
+  getLearningJournal: async (classId: string): Promise<LearningJournalEntry[]> => {
+    const { data, error } = await supabase.from('jurnal_kelas').select('*').eq('class_id', classId);
+    if (error) return [];
+    return data.map(j => ({ ...j, classId: j.class_id, timeSlot: j.time_slot, followUp: j.follow_up }));
+  },
+  saveLearningJournalBatch: async (entries: any[]): Promise<void> => {
+    const dbEntries = entries.map(e => ({
+      class_id: e.classId,
+      date: e.date,
+      day: e.day,
+      time_slot: e.timeSlot,
+      subject: e.subject,
+      topic: e.topic,
+      activities: e.activities,
+      evaluation: e.evaluation,
+      reflection: e.reflection,
+      follow_up: e.followUp,
+      model: e.model,
+      pendekatan: e.pendekatan,
+      metode: e.metode
+    }));
+    await supabase.from('jurnal_kelas').insert(dbEntries);
+  },
+  deleteLearningJournal: async (id: string, classId: string): Promise<void> => {
+    await supabase.from('jurnal_kelas').delete().eq('id', id);
+  },
+
+  // --- Learning Documentation ---
+  getLearningDocumentation: async (classId: string): Promise<LearningDocumentation[]> => {
+    const { data, error } = await supabase.from('learning_documentation').select('*').eq('class_id', classId);
+    if (error) return [];
+    return data.map(d => ({ ...d, classId: d.class_id, namaKegiatan: d.nama_kegiatan, linkFoto: d.link_foto }));
+  },
+  saveLearningDocumentation: async (doc: any): Promise<void> => {
+    const dbDoc = { class_id: doc.classId, nama_kegiatan: doc.namaKegiatan, link_foto: doc.linkFoto };
+    if (doc.id) {
+      await supabase.from('learning_documentation').update(dbDoc).eq('id', doc.id);
+    } else {
+      await supabase.from('learning_documentation').insert([dbDoc]);
+    }
+  },
+  deleteLearningDocumentation: async (id: string, classId: string): Promise<void> => {
+    await supabase.from('learning_documentation').delete().eq('id', id);
+  },
+
+  // --- Liaison Logs ---
+  getLiaisonLogs: async (currentUser: User | null): Promise<LiaisonLog[]> => {
+    const { data, error } = await supabase.from('buku_penghubung').select('*');
+    if (error) return [];
+    return data.map(l => ({ ...l, classId: l.class_id, studentId: l.student_id }));
+  },
+  saveLiaisonLog: async (log: any): Promise<void> => {
+    await supabase.from('buku_penghubung').insert([{
+      class_id: log.classId,
+      student_id: log.studentId,
+      date: log.date,
+      sender: log.sender,
+      message: log.message,
+      status: log.status,
+      category: log.category,
+      response: log.response
+    }]);
+  },
+  updateLiaisonStatus: async (ids: string[], status: string): Promise<void> => {
+    await supabase.from('buku_penghubung').update({ status }).in('id', ids);
+  },
+  replyLiaisonLog: async (id: string, response: string): Promise<void> => {
+    await supabase.from('buku_penghubung').update({ response, status: 'Diterima' }).eq('id', id);
+  },
+
+  // --- Permission Requests ---
+  getPermissionRequests: async (currentUser: User | null): Promise<PermissionRequest[]> => {
+    const { data, error } = await supabase.from('permission_requests').select('*');
+    if (error) return [];
+    return data.map(p => ({ ...p, classId: p.class_id, studentId: p.student_id }));
+  },
+  savePermissionRequest: async (request: any): Promise<void> => {
+    await supabase.from('permission_requests').insert([{
+      class_id: request.classId,
+      student_id: request.studentId,
+      date: request.date,
+      type: request.type,
+      reason: request.reason,
+      status: 'Pending'
+    }]);
+  },
+  processPermissionRequest: async (id: string, actionStatus: string): Promise<void> => {
+    const newStatus = actionStatus === 'approve' ? 'Approved' : 'Rejected';
+    await supabase.from('permission_requests').update({ status: newStatus }).eq('id', id);
+  },
+
+  // --- Support Documents ---
+  getSupportDocuments: async (currentUser: User | null): Promise<SupportDocument[]> => {
+    const { data, error } = await supabase.from('support_documents').select('*');
+    if (error) return [];
+    return data.map(d => ({ ...d, classId: d.class_id }));
+  },
+  saveSupportDocument: async (doc: any): Promise<void> => {
+    const dbDoc = { class_id: doc.classId, name: doc.name, url: doc.url };
+    if (doc.id) {
+      await supabase.from('support_documents').update(dbDoc).eq('id', doc.id);
+    } else {
+      await supabase.from('support_documents').insert([dbDoc]);
+    }
+  },
+  deleteSupportDocument: async (id: string, classId: string): Promise<void> => {
+    await supabase.from('support_documents').delete().eq('id', id);
+  },
+
+  // --- School Assets (Sarana Prasarana) ---
+  getSchoolAssets: async (): Promise<SchoolAsset[]> => {
+    const { data, error } = await supabase.from('school_assets').select('*');
+    if (error) return [];
+    return data;
+  },
+  saveSchoolAsset: async (asset: SchoolAsset): Promise<void> => {
+    if (asset.id) {
+      await supabase.from('school_assets').update(asset).eq('id', asset.id);
+    } else {
+      await supabase.from('school_assets').insert([asset]);
+    }
+  },
+  deleteSchoolAsset: async (id: string): Promise<void> => {
+    await supabase.from('school_assets').delete().eq('id', id);
+  },
+
+  // --- Book Loans ---
+  getBookLoans: async (currentUser: User | null): Promise<BookLoan[]> => {
+    const { data, error } = await supabase.from('book_loans').select('*');
+    if (error) return [];
+    return data.map(l => ({ ...l, classId: l.class_id, studentId: l.student_id, studentName: l.student_name }));
+  },
+  saveBookLoan: async (loan: BookLoan): Promise<void> => {
+    const dbLoan = {
+      student_id: loan.studentId,
+      student_name: loan.studentName,
+      class_id: loan.classId,
+      books: loan.books,
+      qty: loan.qty,
+      status: loan.status,
+      date: loan.date,
+      notes: loan.notes
+    };
+    if (loan.id) {
+      await supabase.from('book_loans').update(dbLoan).eq('id', loan.id);
+    } else {
+      await supabase.from('book_loans').insert([dbLoan]);
+    }
+  },
+  deleteBookLoan: async (id: string): Promise<void> => {
+    await supabase.from('book_loans').delete().eq('id', id);
+  },
+
+  // --- Book Inventory ---
+  getBookInventory: async (classId: string): Promise<BookInventory[]> => {
+    const { data, error } = await supabase.from('book_inventory').select('*').eq('class_id', classId);
+    if (error) return [];
+    return data.map(b => ({
+      ...b,
+      classId: b.class_id,
+      subjectId: b.subject_id,
+      totalStock: Number(b.total_stock),
+      coverUrl: b.cover_url
+    }));
+  },
+  saveBookInventory: async (inventory: BookInventory[]): Promise<void> => {
+    const dbInventory = inventory.map(b => ({
+      id: b.id,
+      class_id: b.classId,
+      subject_id: b.subjectId,
+      name: b.name,
+      stock: b.stock,
+      total_stock: b.totalStock,
+      cover_url: b.coverUrl
+    }));
+    await supabase.from('book_inventory').upsert(dbInventory);
+  },
+  uploadBookCover: async (bookId: string, coverUrl: string): Promise<void> => {
+    await supabase.from('book_inventory').update({ cover_url: coverUrl }).eq('id', bookId);
+  },
+
+  // --- BOS Management ---
+  getBOS: async (): Promise<BOSTransaction[]> => {
+    const { data, error } = await supabase.from('bos_management').select('*');
+    if (error) return [];
+    return data;
+  },
+  saveBOS: async (transaction: BOSTransaction): Promise<void> => {
+    if (transaction.id) {
+      await supabase.from('bos_management').update(transaction).eq('id', transaction.id);
+    } else {
+      await supabase.from('bos_management').insert([transaction]);
+    }
+  },
+  deleteBOS: async (id: string): Promise<void> => {
+    await supabase.from('bos_management').delete().eq('id', id);
+  },
+
+  // --- Backup/Restore ---
+  backupData: async (classId: string): Promise<any> => {
+    return { message: 'Backup logic needs implementation' };
+  },
+  restoreData: async (data: any): Promise<any> => {
+    return { message: 'Restore logic needs implementation' };
+  },
+};
