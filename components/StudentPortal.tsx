@@ -8,7 +8,8 @@ import {
   MapPin, CheckSquare, X, Medal, Heart, MessageCircle, Trophy,
   Edit, Save, Loader2, PlusCircle, History, MessageSquare,
   ClipboardList, Bell, Activity, Sparkles, GraduationCap, ChevronDown,
-  Camera, ChevronLeft, ChevronRight
+  Camera, ChevronLeft, ChevronRight,
+  Sun, Moon, CloudSun, Sunset
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { useModal } from '../context/ModalContext';
@@ -300,6 +301,16 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
     return "Malam";
   }, [currentDate]);
 
+  const getGreetingIcon = useMemo(() => {
+    switch (getGreeting) {
+      case 'Pagi': return <CloudSun className="text-yellow-400 mr-3 inline-block animate-pulse-slow" size={32} />;
+      case 'Siang': return <Sun className="text-orange-500 mr-3 inline-block animate-spin-slow" size={32} />;
+      case 'Sore': return <Sunset className="text-orange-400 mr-3 inline-block" size={32} />;
+      case 'Malam': return <Moon className="text-indigo-400 mr-3 inline-block" size={32} />;
+      default: return <Sun className="text-yellow-500 mr-3 inline-block" size={32} />;
+    }
+  }, [getGreeting]);
+
   const getLocalISODate = (date: Date) => { const y = date.getFullYear(); const m = String(date.getMonth() + 1).padStart(2, '0'); const d = String(date.getDate()).padStart(2, '0'); return `${y}-${m}-${d}`; };
 
   const attendanceStats = useMemo(() => {
@@ -453,8 +464,8 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
             </div>
             
             <div className="flex items-center gap-4">
-                <h1 className="text-2xl font-bold text-white drop-shadow-md hidden md:block">
-                  Selamat {getGreeting}! 👋
+                <h1 className="text-2xl font-bold text-white drop-shadow-md hidden md:flex items-center">
+                  {getGreetingIcon} Selamat {getGreeting}! 👋
                 </h1>
                 
                 {/* Notification Bell for Students */}

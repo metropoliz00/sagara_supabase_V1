@@ -8,7 +8,8 @@ import {
   Users, UserCheck, Calendar, FileText, TrendingUp, 
   Plus, Bell, ChevronRight, CheckCircle, AlertCircle, 
   GraduationCap, BookOpen, Clock, CalendarRange,
-  Activity, XCircle, ExternalLink, Link as LinkIcon, Mail, Info, Camera, ChevronLeft
+  Activity, XCircle, ExternalLink, Link as LinkIcon, Mail, Info, Camera, ChevronLeft,
+  Sun, Moon, CloudSun, Sunset
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -86,7 +87,23 @@ const Dashboard: React.FC<DashboardProps> = ({
   const formattedTime = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(currentDate).replace(/\./g, ':');
   const getLocalISODate = (date: Date) => { const y = date.getFullYear(); const m = String(date.getMonth() + 1).padStart(2, '0'); const d = String(date.getDate()).padStart(2, '0'); return `${y}-${m}-${d}`; };
   const formatLongDate = (dateStr: string) => { if (!dateStr) return "-"; try { const date = new Date(dateStr + 'T00:00:00'); if (isNaN(date.getTime())) return dateStr; return new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(date); } catch (e) { return dateStr; } };
-  const getGreeting = () => { const hour = currentDate.getHours(); if (hour >= 5 && hour < 11) return "Pagi"; if (hour >= 11 && hour < 15) return "Siang"; if (hour >= 15 && hour < 19) return "Sore"; return "Malam"; };
+  const getGreeting = () => { 
+    const hour = currentDate.getHours(); 
+    if (hour >= 5 && hour < 11) return "Pagi"; 
+    if (hour >= 11 && hour < 15) return "Siang"; 
+    if (hour >= 15 && hour < 19) return "Sore"; 
+    return "Malam"; 
+  };
+
+  const getGreetingIcon = (greeting: string) => {
+    switch (greeting) {
+      case 'Pagi': return <CloudSun className="text-yellow-400 mr-3 inline-block animate-pulse-slow" size={32} />;
+      case 'Siang': return <Sun className="text-orange-500 mr-3 inline-block animate-spin-slow" size={32} />;
+      case 'Sore': return <Sunset className="text-orange-400 mr-3 inline-block" size={32} />;
+      case 'Malam': return <Moon className="text-indigo-400 mr-3 inline-block" size={32} />;
+      default: return <Sun className="text-yellow-500 mr-3 inline-block" size={32} />;
+    }
+  };
 
   const totalStudents = students.length;
   const maleStudents = students.filter(s => s.gender === 'L').length;
@@ -363,8 +380,9 @@ const Dashboard: React.FC<DashboardProps> = ({
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-            <h1 className="text-2xl font-bold text-gray-800">
-              Selamat {getGreeting()}, <span className="text-[#5AB2FF]">{(teacherName && teacherName !== 'undefined') ? teacherName : 'Bapak/Ibu Guru'}</span> 👋
+            <h1 className="text-2xl font-bold text-gray-800 flex items-center">
+              {getGreetingIcon(getGreeting())}
+              <span>Selamat {getGreeting()}, <span className="text-[#5AB2FF]">{(teacherName && teacherName !== 'undefined') ? teacherName : 'Bapak/Ibu Guru'}</span> 👋</span>
             </h1>
             <p className="text-gray-500 text-sm mt-1">Berikut adalah ringkasan aktivitas {teachingClass ? `Kelas ${teachingClass}` : 'Sekolah'} hari ini.</p>
             </div>
