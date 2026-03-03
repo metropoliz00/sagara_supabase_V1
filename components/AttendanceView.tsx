@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { Student, Holiday, TeacherProfileData, SchoolProfileData } from '../types';
 import { apiService } from '../services/apiService';
 import { 
@@ -79,6 +80,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
   
   const [rekapEditData, setRekapEditData] = useState<{studentId: string, date: string, status: string, notes: string, name: string} | null>(null);
   const [isSavingRekapCell, setIsSavingRekapCell] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // FAB & Scanner State
   const [isFabOpen, setIsFabOpen] = useState(false);
@@ -143,7 +145,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                   }
 
                   const key = `${sId}_${dateStr}`;
-                  newMap[key] = { status: record.status, notes: record.notes || '' };
+                  newMap[key] = { status: String(record.status).toLowerCase(), notes: record.notes || '' };
               }
           });
       }
@@ -245,6 +247,93 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
       return isSunday || !!holiday;
   };
 
+  const handleDownloadTemplate = () => {
+    const headers = ["NIS", "Nama", "Tanggal (YYYY-MM-DD)", "Status (Hadir/Sakit/Izin/Alpha/Dispensasi)", "Catatan"];
+    const example = [
+      students[0]?.nis || "12345",
+      students[0]?.name || "Nama Siswa",
+      toLocalISOString(new Date()),
+      "Hadir",
+      "Keterangan opsional"
+    ];
+    
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Template Absensi");
+    XLSX.writeFile(workbook, "template_absensi_siswa.xlsx");
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      setIsUploading(true);
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[];
+
+        // Skip header row
+        const rows = data.slice(1);
+        const batchMap: Record<string, any[]> = {};
+
+        rows.forEach(row => {
+          if (!row[0] || !row[2]) return; // Skip if NIS or Date is missing
+
+          const nis = String(row[0]).trim();
+          const student = (allStudents || students).find(s => String(s.nis).trim() === nis);
+          
+          if (student) {
+            let dateStr = String(row[2]).trim();
+            // Handle Excel date serial number if necessary
+            if (!isNaN(Number(dateStr)) && dateStr.length > 5) {
+                const excelDate = new Date((Number(dateStr) - (25567 + 1)) * 86400 * 1000);
+                dateStr = toLocalISOString(excelDate);
+            }
+
+            const statusInput = String(row[3] || 'Hadir').toLowerCase();
+            let status: AttendanceStatus = 'present';
+            if (statusInput.includes('sakit')) status = 'sick';
+            else if (statusInput.includes('izin')) status = 'permit';
+            else if (statusInput.includes('alpha') || statusInput.includes('alfa')) status = 'alpha';
+            else if (statusInput.includes('dispensasi') || statusInput.includes('dispen')) status = 'dispensation';
+
+            const notes = String(row[4] || '').trim();
+
+            if (!batchMap[dateStr]) batchMap[dateStr] = [];
+            batchMap[dateStr].push({
+              studentId: student.id,
+              classId: student.classId,
+              status,
+              notes
+            });
+          }
+        });
+
+        const batchPayload = Object.entries(batchMap).map(([date, records]) => ({ date, records }));
+        
+        if (batchPayload.length > 0) {
+          if (!isDemoMode) await apiService.saveAttendanceBatch(batchPayload);
+          onRefreshData();
+          onShowNotification(`Berhasil mengunggah absensi untuk ${batchPayload.length} tanggal.`, 'success');
+        } else {
+          onShowNotification("Tidak ada data valid yang ditemukan.", 'warning');
+        }
+      } catch (err) {
+        console.error(err);
+        onShowNotification("Gagal memproses file. Pastikan format benar.", 'error');
+      } finally {
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
   const handleSaveBatch = async () => {
     if (isReadOnly) return;
     if (Object.keys(rangeAttendance).length === 0 || !rangeStart || !rangeEnd) {
@@ -314,12 +403,13 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
               const { isRed } = getHolidayForDay(d);
               if (!isRed) {
                   const dateStr = getDateKeyForDay(d);
-                  const key = `${s.id}_${dateStr}`;
+                  const key = `${String(s.id).trim()}_${dateStr}`;
                   const record = attendanceMap[key];
                   if (record) {
-                      if (record.status === 'sick') sakit++;
-                      else if (record.status === 'permit') izin++;
-                      else if (record.status === 'alpha') alpha++;
+                      const status = String(record.status).toLowerCase();
+                      if (status === 'sick') sakit++;
+                      else if (status === 'permit') izin++;
+                      else if (status === 'alpha') alpha++;
                   }
               }
           });
@@ -690,7 +780,29 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                             {[2024, 2025, 2026, 2027].map(y => (<option key={y} value={y}>{y}</option>))}
                         </select>
                      </div>
-                     <button onClick={handlePrint} className="flex items-center space-x-2 bg-[#5AB2FF] text-white px-4 py-2 rounded-lg shadow-md hover:bg-[#A0DEFF]"><Printer size={16} /> <span>Cetak</span></button>
+                     <div className="flex items-center gap-2">
+                        {!isReadOnly && (
+                            <>
+                                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
+                                <button 
+                                    onClick={() => fileInputRef.current?.click()} 
+                                    disabled={isUploading}
+                                    className="flex items-center space-x-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                                >
+                                    {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                                    <span>{isUploading ? 'Mengunggah...' : 'Upload CSV'}</span>
+                                </button>
+                                <button 
+                                    onClick={handleDownloadTemplate} 
+                                    className="flex items-center space-x-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg shadow-sm hover:bg-gray-50"
+                                >
+                                    <Download size={16} />
+                                    <span>Template</span>
+                                </button>
+                            </>
+                        )}
+                        <button onClick={handlePrint} className="flex items-center space-x-2 bg-[#5AB2FF] text-white px-4 py-2 rounded-lg shadow-md hover:bg-[#A0DEFF]"><Printer size={16} /> <span>Cetak</span></button>
+                     </div>
                  </div>
              </div>
              

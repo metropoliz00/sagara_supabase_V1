@@ -1737,7 +1737,7 @@ const App: React.FC = () => {
                         />
                     </div>
                     <div className="hidden md:flex flex-col items-start mr-2">
-                        <span className="text-xs font-bold text-gray-700">{currentUser?.fullName}</span>
+                        <span className="text-xs font-bold text-[#5AB2FF]">{currentUser?.fullName}</span>
                         <span className="text-[10px] text-gray-500 capitalize">{currentUser?.role}</span>
                     </div>
                     <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 hidden md:block ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />

@@ -480,8 +480,29 @@ export const apiService = {
     }
   },
   saveAttendanceBatch: async (batchData: { date: string, records: any[] }[]): Promise<void> => {
-    for (const d of batchData) {
-      await apiService.saveAttendance(d.date, d.records);
+    const upserts: any[] = [];
+    const classGroupsByDate: Record<string, Record<string, any[]>> = {};
+
+    batchData.forEach(d => {
+      d.records.forEach(r => {
+        if (!classGroupsByDate[d.date]) classGroupsByDate[d.date] = {};
+        if (!classGroupsByDate[d.date][r.classId]) classGroupsByDate[d.date][r.classId] = [];
+        classGroupsByDate[d.date][r.classId].push({ studentId: r.studentId, status: r.status, notes: r.notes });
+      });
+    });
+
+    for (const date in classGroupsByDate) {
+      for (const classId in classGroupsByDate[date]) {
+        upserts.push({
+          id: `${classId}_${date}`,
+          records: classGroupsByDate[date][classId]
+        });
+      }
+    }
+
+    if (upserts.length > 0) {
+      const { error } = await supabase.from('attendance').upsert(upserts);
+      if (error) throw error;
     }
   },
 
