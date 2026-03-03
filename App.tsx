@@ -280,9 +280,10 @@ const App: React.FC = () => {
             return;
         }
         try {
-            const [inv, config] = await Promise.all([
+            const [inv, config, globalCalendar] = await Promise.all([
                 apiService.getInventory(activeClassId),
-                apiService.getClassConfig(activeClassId)
+                apiService.getClassConfig(activeClassId),
+                apiService.getAcademicCalendar('global')
             ]);
             let score = 0;
             if (config.schedule && config.schedule.length > 0) score++;
@@ -293,7 +294,9 @@ const App: React.FC = () => {
                 (config.seats.ushape && config.seats.ushape.some(s => s !== null))
             );
             if (hasSeats) score++;
-            if (config.academicCalendar && Object.keys(config.academicCalendar).length > 0) score++;
+            const hasCalendar = (config.academicCalendar && Object.keys(config.academicCalendar).length > 0) || 
+                               (globalCalendar && Object.keys(globalCalendar).length > 0);
+            if (hasCalendar) score++;
             if (inv && inv.length > 0) score++;
             setAdminPercentage(Math.round((score / 5) * 100));
         } catch (e) {

@@ -96,10 +96,11 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
     if (!classId) return;
     setIsLoading(true);
     try {
-        const [invData, guestData, configData] = await Promise.all([
+        const [invData, guestData, configData, calendarData] = await Promise.all([
             apiService.getInventory(classId),
             apiService.getGuests(classId),
-            apiService.getClassConfig(classId)
+            apiService.getClassConfig(classId),
+            apiService.getAcademicCalendar('global')
         ]);
         setInventory(invData);
         setGuests(guestData.sort((a,b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)));
@@ -107,7 +108,11 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
         if (configData.schedule) setSchedule(configData.schedule);
         if (configData.piket) setPiketGroups(configData.piket);
         if (configData.seats) setSeatingLayouts(configData.seats);
-        if (configData.academicCalendar) setAcademicCalendar(configData.academicCalendar);
+        if (calendarData && Object.keys(calendarData).length > 0) {
+            setAcademicCalendar(calendarData);
+        } else if (configData.academicCalendar) {
+            setAcademicCalendar(configData.academicCalendar);
+        }
         if (configData.timeSlots && configData.timeSlots.length > 0) setTimeSlots(configData.timeSlots);
         if (configData.organization) setOrganization(configData.organization); // NEW: Set organization data
 
@@ -216,7 +221,7 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
   const handleSaveAcademicCalendar = async (newData: AcademicCalendarData) => {
     setAcademicCalendar(newData);
     try {
-      await apiService.saveClassConfig('ACADEMIC_CALENDAR', newData, classId);
+      await apiService.saveAcademicCalendar(newData, 'global');
       onShowNotification("Kalender Pendidikan berhasil disimpan!", 'success');
     } catch {
       onShowNotification("Gagal menyimpan Kalender Pendidikan.", 'error');

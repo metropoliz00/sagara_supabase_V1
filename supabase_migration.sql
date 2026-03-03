@@ -3,6 +3,7 @@
 -- Run this in the Supabase SQL Editor
 
 -- Drop existing tables if they exist to ensure clean schema
+DROP TABLE IF EXISTS academic_calendar CASCADE;
 DROP TABLE IF EXISTS class_config CASCADE;
 DROP TABLE IF EXISTS grades CASCADE;
 DROP TABLE IF EXISTS book_inventory CASCADE;
@@ -359,6 +360,13 @@ CREATE TABLE class_config (
   class_id TEXT PRIMARY KEY,
   data JSONB NOT NULL, -- Stores schedule, piket, seats, kktp, organization, settings
   created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 26. Academic Calendar table
+CREATE TABLE academic_calendar (
+  id TEXT PRIMARY KEY, -- 'global' or class_id
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Insert default admin user
