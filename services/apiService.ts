@@ -675,22 +675,32 @@ export const apiService = {
     return data.map(j => ({ ...j, classId: j.class_id, timeSlot: j.time_slot, followUp: j.follow_up }));
   },
   saveLearningJournalBatch: async (entries: any[]): Promise<void> => {
-    const dbEntries = entries.map(e => ({
-      class_id: e.classId,
-      date: e.date,
-      day: e.day,
-      time_slot: e.timeSlot,
-      subject: e.subject,
-      topic: e.topic,
-      activities: e.activities,
-      evaluation: e.evaluation,
-      reflection: e.reflection,
-      follow_up: e.followUp,
-      model: e.model,
-      pendekatan: e.pendekatan,
-      metode: e.metode
-    }));
-    await supabase.from('jurnal_kelas').insert(dbEntries);
+    const dbEntries = entries.map(e => {
+      const entry: any = {
+        class_id: e.classId,
+        date: e.date,
+        day: e.day,
+        time_slot: e.timeSlot,
+        subject: e.subject,
+        topic: e.topic,
+        activities: e.activities,
+        evaluation: e.evaluation,
+        reflection: e.reflection,
+        follow_up: e.followUp,
+        model: e.model,
+        pendekatan: e.pendekatan,
+        metode: e.metode
+      };
+      
+      // If it's an existing entry (not a temp ID), include the ID for upsert
+      if (e.id && !e.id.startsWith('temp-') && !e.id.startsWith('manual-')) {
+        entry.id = e.id;
+      }
+      return entry;
+    });
+
+    const { error } = await supabase.from('jurnal_kelas').upsert(dbEntries);
+    if (error) throw error;
   },
   deleteLearningJournal: async (id: string, classId: string): Promise<void> => {
     await supabase.from('jurnal_kelas').delete().eq('id', id);

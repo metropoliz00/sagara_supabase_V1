@@ -66,12 +66,21 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
   const loadData = async () => {
     setLoading(true);
     try {
-      const [journalData, configData] = await Promise.all([
+      const [journalData, scheduleData, configData] = await Promise.all([
         apiService.getLearningJournal(classId),
+        apiService.getSchedule(classId),
         apiService.getClassConfig(classId)
       ]);
       setEntries(journalData);
-      setSchedule(configData.schedule || []);
+      
+      // Use schedule from dedicated table if available, otherwise fallback to config
+      if (scheduleData && scheduleData.length > 0) {
+          setSchedule(scheduleData);
+      } else if (configData.schedule) {
+          setSchedule(configData.schedule);
+      } else {
+          setSchedule([]);
+      }
     } catch (e) {
       console.error("Failed to load journal data", e);
     } finally {

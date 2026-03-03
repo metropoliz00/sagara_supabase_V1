@@ -27,7 +27,7 @@ import SchoolAssetsAdmin from './components/SchoolAssetsAdmin';
 import BOSManagement from './components/BOSManagement'; // NEW IMPORT
 import BookLoanView from './components/BookLoanView';
 import CustomModal from './components/CustomModal'; 
-import { ViewState, Student, AgendaItem, Extracurricular, BehaviorLog, GradeRecord, TeacherProfileData, SchoolProfileData, User, Holiday, SikapAssessment, KarakterAssessment, EmploymentLink, LearningReport, LiaisonLog, PermissionRequest, LearningJournalEntry, SupportDocument, InventoryItem, SchoolAsset, BOSTransaction, LearningDocumentation, BookLoan } from './types';
+import { ViewState, Student, AgendaItem, Extracurricular, BehaviorLog, GradeRecord, TeacherProfileData, SchoolProfileData, User, Holiday, SikapAssessment, KarakterAssessment, EmploymentLink, LearningReport, LiaisonLog, PermissionRequest, LearningJournalEntry, SupportDocument, InventoryItem, SchoolAsset, BOSTransaction, LearningDocumentation, BookLoan, BookInventory } from './types';
 import { MOCK_SUBJECTS, MOCK_STUDENTS, MOCK_EXTRACURRICULARS } from './constants';
 import { apiService } from './services/apiService';
 import { cacheService } from './src/services/cacheService';
@@ -969,6 +969,40 @@ const App: React.FC = () => {
     if (isDemoMode) return;
 
     try {
+      // Fetch latest inventory to ensure we don't overwrite concurrent edits
+      const currentInventory = await apiService.getBookInventory(loan.classId);
+      let inventoryChanged = false;
+
+      // Logic for stock update
+      const isNew = !oldLoans.find(l => l.id === loan.id);
+      const oldLoan = oldLoans.find(l => l.id === loan.id);
+
+      // Scenario 1: New Loan (Dipinjam)
+      if (isNew && loan.status === 'Dipinjam') {
+          loan.books.forEach(bookName => {
+              const itemIndex = currentInventory.findIndex(i => i.name === bookName);
+              if (itemIndex !== -1) {
+                  currentInventory[itemIndex].stock = Math.max(0, currentInventory[itemIndex].stock - loan.qty);
+                  inventoryChanged = true;
+              }
+          });
+      }
+      // Scenario 2: Returning a Loan (Dipinjam -> Dikembalikan)
+      else if (!isNew && oldLoan?.status === 'Dipinjam' && loan.status === 'Dikembalikan') {
+          loan.books.forEach(bookName => {
+              const itemIndex = currentInventory.findIndex(i => i.name === bookName);
+              if (itemIndex !== -1) {
+                  currentInventory[itemIndex].stock = currentInventory[itemIndex].stock + loan.qty;
+                  inventoryChanged = true;
+              }
+          });
+      }
+
+      // Save inventory if changed
+      if (inventoryChanged) {
+          await apiService.saveBookInventory(currentInventory);
+      }
+
       await apiService.saveBookLoan(loan);
       await fetchData(); // Refresh for server-side ID
     } catch (error) {
@@ -980,18 +1014,44 @@ const App: React.FC = () => {
   const handleDeleteBookLoan = async (id: string) => {
     showConfirm('Hapus data peminjaman ini?', () => {
       const oldLoans = bookLoans;
+      const loanToDelete = oldLoans.find(l => l.id === id);
       const newLoans = oldLoans.filter(l => l.id !== id);
+      
       setBookLoans(newLoans);
       cacheService.set('bookLoans', newLoans);
       handleShowNotification('Data peminjaman berhasil dihapus.', 'success');
 
       if (isDemoMode) return;
 
-      apiService.deleteBookLoan(id).catch(() => {
-        setBookLoans(oldLoans);
-        cacheService.set('bookLoans', oldLoans);
-        handleShowNotification('Gagal menghapus data peminjaman.', 'error');
-      });
+      const processDelete = async () => {
+          try {
+              if (loanToDelete && loanToDelete.status === 'Dipinjam') {
+                  const currentInventory = await apiService.getBookInventory(loanToDelete.classId);
+                  let inventoryChanged = false;
+                  
+                  loanToDelete.books.forEach(bookName => {
+                      const itemIndex = currentInventory.findIndex(i => i.name === bookName);
+                      if (itemIndex !== -1) {
+                          currentInventory[itemIndex].stock = currentInventory[itemIndex].stock + loanToDelete.qty;
+                          inventoryChanged = true;
+                      }
+                  });
+
+                  if (inventoryChanged) {
+                      await apiService.saveBookInventory(currentInventory);
+                  }
+              }
+              
+              await apiService.deleteBookLoan(id);
+              await fetchData(); // Refresh data
+          } catch (error) {
+              setBookLoans(oldLoans);
+              cacheService.set('bookLoans', oldLoans);
+              handleShowNotification('Gagal menghapus data peminjaman.', 'error');
+          }
+      };
+
+      processDelete();
     });
   };
 
