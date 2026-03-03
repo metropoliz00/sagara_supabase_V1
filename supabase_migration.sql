@@ -363,11 +363,21 @@ CREATE TABLE class_config (
 );
 
 -- 26. Academic Calendar table
-CREATE TABLE academic_calendar (
+CREATE TABLE IF NOT EXISTS academic_calendar (
   id TEXT PRIMARY KEY, -- 'global' or class_id
   data JSONB NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Enable RLS
+ALTER TABLE academic_calendar ENABLE ROW LEVEL SECURITY;
+
+-- Create policies to allow access for all users (since we use anon key)
+CREATE POLICY "Enable all access for all users" ON "public"."academic_calendar"
+AS PERMISSIVE FOR ALL
+TO public
+USING (true)
+WITH CHECK (true);
 
 -- Insert default admin user
 INSERT INTO users (username, password, role, full_name, class_id)

@@ -799,7 +799,14 @@ export const apiService = {
       .eq('id', id)
       .single();
     
-    if (error || !data) return {};
+    if (error) {
+      // It's normal to not find a row if it hasn't been created yet
+      if (error.code !== 'PGRST116') {
+        console.error('Error fetching academic calendar:', error);
+      }
+      return {};
+    }
+    if (!data) return {};
     return data.data as AcademicCalendarData;
   },
   saveAcademicCalendar: async (data: AcademicCalendarData, id: string = 'global'): Promise<void> => {
@@ -807,7 +814,10 @@ export const apiService = {
       .from('academic_calendar')
       .upsert({ id, data, updated_at: new Date().toISOString() });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error saving academic calendar:', error);
+      throw error;
+    }
   },
 
   // --- Book Loans ---
