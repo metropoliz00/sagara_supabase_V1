@@ -323,7 +323,7 @@ CREATE TABLE learning_documentation (
 
 -- 20. School Assets table
 CREATE TABLE school_assets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY, -- Changed from UUID to TEXT
   name TEXT NOT NULL,
   qty NUMERIC DEFAULT 0,
   condition TEXT,
@@ -333,7 +333,7 @@ CREATE TABLE school_assets (
 
 -- 21. BOS Management table
 CREATE TABLE bos_management (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY, -- Changed from UUID to TEXT
   date DATE NOT NULL,
   type TEXT,
   category TEXT,
@@ -344,7 +344,7 @@ CREATE TABLE bos_management (
 
 -- 22. Book Loans table
 CREATE TABLE book_loans (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY, -- Changed from UUID to TEXT
   student_id TEXT NOT NULL,
   student_name TEXT,
   class_id TEXT NOT NULL,
@@ -355,6 +355,32 @@ CREATE TABLE book_loans (
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- ... (skip to end of file to add policies)
+
+-- Enable RLS for School Assets
+ALTER TABLE school_assets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable all access for all users" ON "public"."school_assets"
+AS PERMISSIVE FOR ALL
+TO public
+USING (true)
+WITH CHECK (true);
+
+-- Enable RLS for BOS Management
+ALTER TABLE bos_management ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable all access for all users" ON "public"."bos_management"
+AS PERMISSIVE FOR ALL
+TO public
+USING (true)
+WITH CHECK (true);
+
+-- Enable RLS for Book Loans
+ALTER TABLE book_loans ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable all access for all users" ON "public"."book_loans"
+AS PERMISSIVE FOR ALL
+TO public
+USING (true)
+WITH CHECK (true);
 
 -- 23. Book Inventory table
 CREATE TABLE book_inventory (

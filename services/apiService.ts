@@ -785,10 +785,20 @@ export const apiService = {
     return data;
   },
   saveSchoolAsset: async (asset: SchoolAsset): Promise<void> => {
-    if (asset.id) {
-      await supabase.from('school_assets').update(asset).eq('id', asset.id);
+    const dbAsset = {
+      id: asset.id,
+      name: asset.name,
+      qty: asset.qty,
+      condition: asset.condition,
+      location: asset.location
+    };
+    
+    const { data: existing } = await supabase.from('school_assets').select('id').eq('id', asset.id).single();
+
+    if (existing) {
+      await supabase.from('school_assets').update({ ...dbAsset, id: undefined }).eq('id', asset.id);
     } else {
-      await supabase.from('school_assets').insert([asset]);
+      await supabase.from('school_assets').insert([dbAsset]);
     }
   },
   deleteSchoolAsset: async (id: string): Promise<void> => {
@@ -866,6 +876,7 @@ export const apiService = {
   },
   saveBookLoan: async (loan: BookLoan): Promise<void> => {
     const dbLoan = {
+      id: loan.id,
       student_id: loan.studentId,
       student_name: loan.studentName,
       class_id: loan.classId,
@@ -875,8 +886,11 @@ export const apiService = {
       date: loan.date,
       notes: loan.notes
     };
-    if (loan.id) {
-      await supabase.from('book_loans').update(dbLoan).eq('id', loan.id);
+    
+    const { data: existing } = await supabase.from('book_loans').select('id').eq('id', loan.id).single();
+
+    if (existing) {
+      await supabase.from('book_loans').update({ ...dbLoan, id: undefined }).eq('id', loan.id);
     } else {
       await supabase.from('book_loans').insert([dbLoan]);
     }
@@ -920,10 +934,21 @@ export const apiService = {
     return data;
   },
   saveBOS: async (transaction: BOSTransaction): Promise<void> => {
-    if (transaction.id) {
-      await supabase.from('bos_management').update(transaction).eq('id', transaction.id);
+    const dbTransaction = {
+      id: transaction.id,
+      date: transaction.date,
+      type: transaction.type,
+      category: transaction.category,
+      description: transaction.description,
+      amount: transaction.amount
+    };
+
+    const { data: existing } = await supabase.from('bos_management').select('id').eq('id', transaction.id).single();
+
+    if (existing) {
+      await supabase.from('bos_management').update({ ...dbTransaction, id: undefined }).eq('id', transaction.id);
     } else {
-      await supabase.from('bos_management').insert([transaction]);
+      await supabase.from('bos_management').insert([dbTransaction]);
     }
   },
   deleteBOS: async (id: string): Promise<void> => {
