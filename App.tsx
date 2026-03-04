@@ -828,7 +828,11 @@ const App: React.FC = () => {
   // Learning Reports
   const handleSaveReport = async (report: Omit<LearningReport, 'id'> | LearningReport) => {
     const optimisticId = `report-${Date.now()}`;
-    const newReport = { ...report, id: (report as LearningReport).id || optimisticId } as LearningReport;
+    const newReport = { 
+        ...report, 
+        id: (report as LearningReport).id || optimisticId,
+        schoolId: schoolProfile.npsn
+    } as LearningReport;
 
     const oldReports = learningReports;
     const newReports = oldReports.find(r => String(r.id).trim() === String(newReport.id).trim())
@@ -842,7 +846,7 @@ const App: React.FC = () => {
     if (isDemoMode) return;
 
     try {
-      await apiService.saveLearningReport(report);
+      await apiService.saveLearningReport(newReport);
       await fetchData(); // Refresh for server-side ID
     } catch (error) {
       setLearningReports(oldReports);

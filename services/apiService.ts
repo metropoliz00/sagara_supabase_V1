@@ -698,8 +698,10 @@ export const apiService = {
     return data.map(r => ({ ...r, classId: r.class_id, documentLink: r.document_link, teacherName: r.teacher_name }));
   },
   saveLearningReport: async (report: any): Promise<void> => {
+    console.log("Saving report:", report);
     const dbReport = {
       class_id: report.classId,
+      school_id: report.schoolId,
       date: report.date,
       type: report.type,
       subject: report.subject,
@@ -707,10 +709,13 @@ export const apiService = {
       document_link: report.documentLink,
       teacher_name: report.teacherName
     };
-    if (report.id) {
-      await supabase.from('learning_reports').update(dbReport).eq('id', report.id);
+    console.log("dbReport:", dbReport);
+    if (report.id && !report.id.startsWith('report-')) {
+      const { error } = await supabase.from('learning_reports').update(dbReport).eq('id', report.id);
+      if (error) console.error("Update error:", error);
     } else {
-      await supabase.from('learning_reports').insert([dbReport]);
+      const { error } = await supabase.from('learning_reports').insert([dbReport]);
+      if (error) console.error("Insert error:", error);
     }
   },
   deleteLearningReport: async (id: string, classId: string): Promise<void> => {
