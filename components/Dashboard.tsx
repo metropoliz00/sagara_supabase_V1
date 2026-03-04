@@ -3,7 +3,7 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, RadialBarChart, RadialBar, Legend 
 } from 'recharts';
-import { Student, AgendaItem, Holiday, ViewState, GradeRecord, Subject, EmploymentLink, PermissionRequest, SchoolProfileData, LearningDocumentation } from '../types';
+import { Student, AgendaItem, Holiday, ViewState, GradeRecord, Subject, EmploymentLink, PermissionRequest, SchoolProfileData, LearningDocumentation, LearningReport } from '../types';
 import { 
   Users, UserCheck, Calendar, FileText, TrendingUp, 
   Plus, Bell, ChevronRight, CheckCircle, AlertCircle, 
@@ -28,6 +28,7 @@ interface DashboardProps {
   onOpenPermissionModal?: () => void;
   schoolProfile?: SchoolProfileData; // Added schoolProfile prop
   learningDocumentation?: LearningDocumentation[];
+  learningReports?: LearningReport[];
   hasNewMessages?: boolean;
   unreadMessageCount?: number;
   kktpMap?: Record<string, number>;
@@ -40,6 +41,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   teacherName, teachingClass, onChangeView, grades, subjects, adminCompleteness = 0,
   employmentLinks = [], pendingPermissions = [], onOpenPermissionModal, schoolProfile,
   learningDocumentation = [],
+  learningReports = [],
   hasNewMessages = false, unreadMessageCount = 0,
   kktpMap = {}
 }) => {
@@ -664,6 +666,26 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* Laporan Pembelajaran Section */}
+            <div 
+                className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                onClick={() => onChangeView('learning-reports')}
+            >
+                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center"><FileText size={18} className="mr-2 text-indigo-500"/> Laporan Pembelajaran</h3>
+                <div className="space-y-3">
+                    {learningReports.slice(0, 5).map(report => (
+                        <div key={report.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <div>
+                                <p className="text-sm font-bold text-gray-800">{report.subject}</p>
+                                <p className="text-xs text-gray-500">{report.teacherName || 'Guru'}</p>
+                            </div>
+                            <span className="text-[10px] font-bold px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full">{report.type}</span>
+                        </div>
+                    ))}
+                    {learningReports.length === 0 && <p className="text-sm text-gray-400 italic text-center py-4">Belum ada laporan.</p>}
+                </div>
+            </div>
             </div>
 
             {/* Side Lists with Alternating Colors */}

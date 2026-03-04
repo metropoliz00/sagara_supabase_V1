@@ -7,7 +7,7 @@ import {
     ViewState, Student, AgendaItem, BehaviorLog, GradeRecord, 
     TeacherProfileData, SchoolProfileData, User, Holiday, KarakterAssessment, 
     EmploymentLink, LiaisonLog, PermissionRequest, InventoryItem, SchoolAsset, BOSTransaction, Extracurricular, LearningDocumentation, BookLoan,
-    Subject
+    Subject, LearningReport
 } from '../types';
 import { MOCK_SUBJECTS } from '../constants';
 
@@ -44,6 +44,7 @@ interface DashboardContainerProps {
   onOpenPermissionModal: () => void;
   schoolProfile: SchoolProfileData;
   learningDocumentation?: LearningDocumentation[];
+  learningReports?: LearningReport[];
   hasNewMessages?: boolean;
   unreadMessageCount?: number;
   bookLoans: BookLoan[];
@@ -84,6 +85,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
   onOpenPermissionModal,
   schoolProfile,
   learningDocumentation,
+  learningReports,
   hasNewMessages = false,
   unreadMessageCount = 0,
   bookLoans,
@@ -159,6 +161,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
       onOpenPermissionModal={onOpenPermissionModal} 
       schoolProfile={schoolProfile} 
       learningDocumentation={learningDocumentation || []}
+      learningReports={learningReports || []}
       hasNewMessages={hasNewMessages}
       unreadMessageCount={unreadMessageCount}
       kktpMap={kktpMap}
