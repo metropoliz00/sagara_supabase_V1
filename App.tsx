@@ -1564,14 +1564,14 @@ const App: React.FC = () => {
                   />;
       case 'learning-reports': 
         if (isStudentRole) { setCurrentView('dashboard'); return null; }
-        const teachersList = users.filter(u => u.role === 'guru');
+        const allTeachers = users.filter(u => u.role === 'guru');
         return <LearningReportsView 
-                  reports={filteredReports}
+                  reports={learningReports}
                   subjects={MOCK_SUBJECTS}
                   onSave={handleSaveReport}
                   onDelete={handleDeleteReport}
                   classId={activeClassId}
-                  teachers={teachersList}
+                  teachers={allTeachers}
                   onNavigateToJournal={handleNavigateToJournal}
                />;
       case 'learning-journal':
