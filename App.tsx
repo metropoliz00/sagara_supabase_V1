@@ -863,7 +863,39 @@ const App: React.FC = () => {
   const handleUpdateLiaisonStatus = async (ids: string[], status: 'Diterima' | 'Ditolak' | 'Selesai') => { if (isDemoMode) { setLiaisonLogs(prev => prev.map(l => ids.includes(l.id) ? { ...l, status: status } : l)); handleShowNotification(`Status diperbarui menjadi ${status} (Demo).`, 'success'); return; } await apiService.updateLiaisonStatus(ids, status); handleShowNotification(`Status laporan diperbarui: ${status}`, 'success'); const fetchedLogs = await apiService.getLiaisonLogs(currentUser); setLiaisonLogs(fetchedLogs); };
 
   // Permissions
-  const handleSavePermissionRequest = async (date: string, records: any[]) => { const typeStr = records[0]?.status; const typeLabel = typeStr === 'sick' ? 'Sakit' : typeStr === 'dispensation' ? 'Dispensasi' : 'Ijin'; if (isDemoMode) { handleShowNotification(`Pengajuan ${typeLabel} tersimpan (Demo).`, 'success'); return; } for (const rec of records) { await apiService.savePermissionRequest({ studentId: rec.studentId, classId: rec.classId, date: date, type: rec.status, reason: rec.notes }); } handleShowNotification(`Pengajuan ${typeLabel} dikirim. Menunggu konfirmasi.`, 'success'); const reqs = await apiService.getPermissionRequests(currentUser); setPermissionRequests(reqs); };
+  const handleSavePermissionRequest = async (date: string, records: any[]) => { 
+      const typeStr = records[0]?.status; 
+      const typeLabel = typeStr === 'sick' ? 'Sakit' : typeStr === 'dispensation' ? 'Dispensasi' : 'Ijin'; 
+      
+      if (isDemoMode) { 
+          handleShowNotification(`Pengajuan ${typeLabel} tersimpan (Demo).`, 'success'); 
+          return; 
+      } 
+      
+      for (const rec of records) { 
+          await apiService.savePermissionRequest({ 
+              studentId: rec.studentId, 
+              classId: rec.classId, 
+              date: date, 
+              type: rec.status, 
+              reason: rec.notes 
+          }); 
+      } 
+      
+      // Automatically add to attendance
+      const attendanceRecords = records.map(rec => ({
+          studentId: rec.studentId,
+          status: rec.status,
+          notes: rec.notes
+      }));
+      await apiService.saveAttendance(date, attendanceRecords.map(r => ({...r, classId: records[0].classId})));
+
+      handleShowNotification(`Pengajuan ${typeLabel} dikirim dan dicatat di absensi.`, 'success'); 
+      const reqs = await apiService.getPermissionRequests(currentUser); 
+      setPermissionRequests(reqs); 
+      const att = await apiService.getAttendance(currentUser);
+      setAllAttendanceRecords(att);
+  };
 
   // Support Docs
   const handleSaveSupportDocument = async (doc: Omit<SupportDocument, 'id'> | SupportDocument) => {
