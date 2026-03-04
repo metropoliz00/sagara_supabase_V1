@@ -856,7 +856,48 @@ export const apiService = {
   },
   processPermissionRequest: async (id: string, actionStatus: string): Promise<void> => {
     const newStatus = actionStatus === 'approve' ? 'Approved' : 'Rejected';
+    
+    // 1. Get request details
+    const { data: request, error: fetchError } = await supabase
+        .from('permission_requests')
+        .select('*')
+        .eq('id', id)
+        .single();
+    
+    if (fetchError || !request) throw fetchError || new Error('Request not found');
+
+    // 2. Update status
     await supabase.from('permission_requests').update({ status: newStatus }).eq('id', id);
+
+    // 3. If approved, add to attendance
+    if (actionStatus === 'approve') {
+        const attendanceId = `${request.class_id}_${request.date}`;
+        
+        // Get existing attendance
+        const { data: attendance, error: attError } = await supabase
+            .from('attendance')
+            .select('*')
+            .eq('id', attendanceId)
+            .single();
+        
+        const newRecord = {
+            studentId: request.student_id,
+            status: request.type, // Assuming 'type' maps to attendance status (e.g., 'sick', 'permit')
+            notes: request.reason
+        };
+
+        if (attendance) {
+            // Update existing
+            const records = [...attendance.records, newRecord];
+            await supabase.from('attendance').update({ records }).eq('id', attendanceId);
+        } else {
+            // Create new
+            await supabase.from('attendance').insert([{
+                id: attendanceId,
+                records: [newRecord]
+            }]);
+        }
+    }
   },
 
   // --- Support Documents ---
