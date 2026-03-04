@@ -625,7 +625,10 @@ const App: React.FC = () => {
 
     try {
       await apiService.createAgenda(agendaWithClass);
-      await fetchData(); // Refresh to get server-side IDs
+      // Instead of full fetchData, just fetch agendas to avoid overwriting other states
+      const updatedAgendas = await apiService.getAgendas(currentUser);
+      setAgendas(updatedAgendas.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      cacheService.set('agendas', updatedAgendas);
     } catch (error) {
       setAgendas(oldAgendas);
       cacheService.set('agendas', oldAgendas);
@@ -682,7 +685,9 @@ const App: React.FC = () => {
 
     try {
       await apiService.createExtracurricular(itemWithClass);
-      await fetchData(); // Refresh to get server-side IDs
+      const updatedExtras = await apiService.getExtracurriculars(currentUser);
+      setExtracurriculars(updatedExtras);
+      cacheService.set('extracurriculars', updatedExtras);
     } catch (error) {
       setExtracurriculars(oldExtras);
       cacheService.set('extracurriculars', oldExtras);

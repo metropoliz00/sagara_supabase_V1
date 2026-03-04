@@ -342,7 +342,8 @@ export const apiService = {
     return data.map(a => ({ ...a, classId: a.class_id }));
   },
   createAgenda: async (agenda: AgendaItem): Promise<void> => {
-    await supabase.from('agendas').insert([{
+    console.log("Creating agenda:", agenda);
+    const { error } = await supabase.from('agendas').insert([{
       class_id: agenda.classId,
       title: agenda.title,
       date: agenda.date,
@@ -350,6 +351,7 @@ export const apiService = {
       type: agenda.type,
       completed: agenda.completed
     }]);
+    if (error) console.error("Error creating agenda:", error);
   },
   updateAgenda: async (agenda: AgendaItem): Promise<void> => {
     await supabase.from('agendas').update({
@@ -436,7 +438,8 @@ export const apiService = {
     return data.map(e => ({ ...e, classId: e.class_id }));
   },
   createExtracurricular: async (extra: Extracurricular): Promise<void> => {
-    await supabase.from('extracurriculars').insert([{
+    console.log("Creating extracurricular:", extra);
+    const { error } = await supabase.from('extracurriculars').insert([{
       class_id: extra.classId,
       name: extra.name,
       category: extra.category,
@@ -444,6 +447,7 @@ export const apiService = {
       coach: extra.coach,
       members: extra.members
     }]);
+    if (error) console.error("Error creating extracurricular:", error);
   },
   updateExtracurricular: async (extra: Extracurricular): Promise<void> => {
     await supabase.from('extracurriculars').update({
