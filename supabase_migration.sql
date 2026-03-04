@@ -5,6 +5,7 @@
 -- Drop existing tables if they exist to ensure clean schema
 DROP TABLE IF EXISTS academic_calendar CASCADE;
 DROP TABLE IF EXISTS class_config CASCADE;
+DROP TABLE IF EXISTS schedule CASCADE;
 DROP TABLE IF EXISTS grades CASCADE;
 DROP TABLE IF EXISTS book_inventory CASCADE;
 DROP TABLE IF EXISTS book_loans CASCADE;
@@ -53,7 +54,14 @@ CREATE TABLE users (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 2. Students table
+-- 2. Class Config table (Moved to top for priority)
+CREATE TABLE class_config (
+  class_id TEXT PRIMARY KEY,
+  data JSONB NOT NULL, -- Stores schedule, piket, seats, kktp, organization, settings
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 3. Students table
 CREATE TABLE students (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -264,17 +272,9 @@ CREATE TABLE jurnal_kelas (
   class_id TEXT NOT NULL,
   date DATE NOT NULL,
   day TEXT,
-  time_slot TEXT,
-  subject TEXT,
-  topic TEXT,
-  activities TEXT,
-  evaluation TEXT,
-  reflection TEXT,
-  follow_up TEXT,
-  model TEXT,
-  pendekatan TEXT,
-  metode TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
+  content JSONB DEFAULT '[]', -- Array of journal entries
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(class_id, date)
 );
 
 -- 16. Buku Penghubung table
@@ -405,13 +405,6 @@ CREATE TABLE grades (
   sum4 NUMERIC DEFAULT 0,
   sas NUMERIC DEFAULT 0,
   PRIMARY KEY (student_id, subject_id)
-);
-
--- 25. Class Config table (for Schedule, Piket, etc.)
-CREATE TABLE class_config (
-  class_id TEXT PRIMARY KEY,
-  data JSONB NOT NULL, -- Stores schedule, piket, seats, kktp, organization, settings
-  created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- 26. Academic Calendar table

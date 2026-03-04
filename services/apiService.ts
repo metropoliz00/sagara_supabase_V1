@@ -134,7 +134,56 @@ export const apiService = {
   },
 
   syncStudentAccounts: async (): Promise<{ status: string; message: string }> => {
-    return { status: 'success', message: 'Sync logic needs backend implementation or manual trigger' };
+    try {
+      // 1. Get all students
+      const { data: students, error: studentError } = await supabase.from('students').select('*');
+      if (studentError) throw studentError;
+
+      // 2. Get all existing student users
+      const { data: users, error: userError } = await supabase.from('users').select('*').eq('role', 'siswa');
+      if (userError) throw userError;
+
+      let createdCount = 0;
+      let updatedCount = 0;
+
+      for (const student of students) {
+        if (!student.nis) continue; // Skip if no NIS
+
+        // Find existing user by student_id
+        let existingUser = users.find(u => u.student_id === student.id);
+
+        // If not found by ID, try finding by username (NIS)
+        if (!existingUser) {
+           existingUser = users.find(u => u.username === student.nis);
+        }
+
+        const userData = {
+            username: student.nis,
+            role: 'siswa',
+            full_name: student.name,
+            class_id: student.class_id,
+            student_id: student.id,
+        };
+
+        if (existingUser) {
+            // Update existing user to ensure data is in sync
+            const { error } = await supabase.from('users').update(userData).eq('id', existingUser.id);
+            if (!error) updatedCount++;
+        } else {
+            // Create new user
+            const { error } = await supabase.from('users').insert([{
+                ...userData,
+                password: student.nis // Default password is NIS
+            }]);
+            if (!error) createdCount++;
+        }
+      }
+
+      return { status: 'success', message: `Sinkronisasi berhasil. ${createdCount} akun dibuat, ${updatedCount} akun diperbarui.` };
+    } catch (error: any) {
+      console.error('Sync error:', error);
+      return { status: 'error', message: 'Gagal melakukan sinkronisasi: ' + error.message };
+    }
   },
 
   // --- Students ---
@@ -672,38 +721,78 @@ export const apiService = {
   getLearningJournal: async (classId: string): Promise<LearningJournalEntry[]> => {
     const { data, error } = await supabase.from('jurnal_kelas').select('*').eq('class_id', classId);
     if (error) return [];
-    return data.map(j => ({ ...j, classId: j.class_id, timeSlot: j.time_slot, followUp: j.follow_up }));
+    
+    const entries: LearningJournalEntry[] = [];
+    data.forEach(row => {
+        if (Array.isArray(row.content)) {
+            row.content.forEach((item: any) => {
+                entries.push({
+                    ...item,
+                    classId: row.class_id,
+                    date: row.date,
+                    day: row.day
+                });
+            });
+        }
+    });
+    return entries;
   },
   saveLearningJournalBatch: async (entries: any[]): Promise<void> => {
-    const dbEntries = entries.map(e => {
-      const entry: any = {
-        class_id: e.classId,
-        date: e.date,
-        day: e.day,
-        time_slot: e.timeSlot,
-        subject: e.subject,
-        topic: e.topic,
-        activities: e.activities,
-        evaluation: e.evaluation,
-        reflection: e.reflection,
-        follow_up: e.followUp,
-        model: e.model,
-        pendekatan: e.pendekatan,
-        metode: e.metode
-      };
-      
-      // If it's an existing entry (not a temp ID), include the ID for upsert
-      if (e.id && !e.id.startsWith('temp-') && !e.id.startsWith('manual-')) {
-        entry.id = e.id;
-      }
-      return entry;
+    // Group entries by date
+    const entriesByDate: Record<string, any[]> = {};
+    entries.forEach(e => {
+        if (!entriesByDate[e.date]) {
+            entriesByDate[e.date] = [];
+        }
+        entriesByDate[e.date].push(e);
     });
 
-    const { error } = await supabase.from('jurnal_kelas').upsert(dbEntries);
+    const dbRows = Object.keys(entriesByDate).map(date => {
+        const dateEntries = entriesByDate[date];
+        const firstEntry = dateEntries[0];
+        
+        const content = dateEntries.map(e => ({
+            id: (e.id && !e.id.startsWith('temp-') && !e.id.startsWith('manual-')) ? e.id : crypto.randomUUID(),
+            timeSlot: e.timeSlot,
+            subject: e.subject,
+            topic: e.topic,
+            activities: e.activities,
+            evaluation: e.evaluation,
+            reflection: e.reflection,
+            followUp: e.followUp,
+            model: e.model,
+            pendekatan: e.pendekatan,
+            metode: e.metode
+        }));
+
+        return {
+            class_id: firstEntry.classId,
+            date: date,
+            day: firstEntry.day,
+            content: content
+        };
+    });
+
+    const { error } = await supabase.from('jurnal_kelas').upsert(dbRows, { onConflict: 'class_id, date' });
     if (error) throw error;
   },
   deleteLearningJournal: async (id: string, classId: string): Promise<void> => {
-    await supabase.from('jurnal_kelas').delete().eq('id', id);
+    // Find the row containing the entry
+    const { data, error } = await supabase
+      .from('jurnal_kelas')
+      .select('*')
+      .eq('class_id', classId)
+      .filter('content', 'cs', `[{"id": "${id}"}]`);
+    
+    if (error || !data || data.length === 0) return;
+
+    const row = data[0];
+    const newContent = row.content.filter((entry: any) => entry.id !== id);
+
+    await supabase
+      .from('jurnal_kelas')
+      .update({ content: newContent })
+      .eq('id', row.id);
   },
 
   // --- Learning Documentation ---
