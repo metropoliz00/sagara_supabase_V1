@@ -223,6 +223,15 @@ const App: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  // Auto-refresh effect
+  useEffect(() => {
+    if (!currentUser) return;
+    const interval = setInterval(() => {
+        fetchData(false, true);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [currentUser]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
@@ -234,6 +243,7 @@ const App: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
 
   const availableClasses = useMemo(() => {
     const studentClasses = students.map(s => String(s.classId || '').trim().toUpperCase()).filter(Boolean);
@@ -1090,18 +1100,18 @@ const App: React.FC = () => {
     });
   };
 
-  const fetchData = async (forceRefresh = false) => {
+  const fetchData = async (forceRefresh = false, silent = false) => {
     if (!currentUser) return;
 
     const isCacheEmpty = !cacheService.get('students');
-    if (isCacheEmpty || forceRefresh) {
+    if ((isCacheEmpty || forceRefresh) && !silent) {
       setLoading(true);
     }
     setError(null);
     setIsDemoMode(false);
 
     // Pastikan loading tampil minimal 1 detik agar transisi halus
-    const minDelay = new Promise(resolve => setTimeout(resolve, 1000));
+    const minDelay = !silent ? new Promise(resolve => setTimeout(resolve, 1000)) : Promise.resolve();
 
     if (!apiService.isConfigured()) {
       setStudents(MOCK_STUDENTS);
@@ -1110,7 +1120,7 @@ const App: React.FC = () => {
       setTeacherProfile({name: 'Budi Santoso (Demo)', nip:'123', email:'demo@guru.com', phone:'-', address:''});
       setIsDemoMode(true);
       await minDelay;
-      setLoading(false);
+      if (!silent) setLoading(false);
       handleShowNotification("Mode Demo Aktif: Backend belum dikonfigurasi.", "warning");
       return;
     }
@@ -1303,7 +1313,7 @@ const App: React.FC = () => {
       setTeacherProfile({name: 'Guru (Offline)', nip:'', email:'', phone:'', address:''});
       setIsDemoMode(true);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
