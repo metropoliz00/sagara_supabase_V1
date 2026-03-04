@@ -1416,7 +1416,7 @@ const App: React.FC = () => {
             onOpenPermissionModal={() => setIsPermissionModalOpen(true)}
             schoolProfile={schoolProfile}
             learningDocumentation={filteredLearningDocumentation}
-            learningReports={learningReports}
+            learningReports={filteredReports}
             hasNewMessages={hasNewMessages}
             unreadMessageCount={unreadMessageCount}
             bookLoans={bookLoans}
