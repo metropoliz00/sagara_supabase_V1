@@ -228,7 +228,7 @@ const App: React.FC = () => {
     if (!currentUser) return;
     const interval = setInterval(() => {
         fetchData(false, true);
-    }, 5000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [currentUser]);
 
