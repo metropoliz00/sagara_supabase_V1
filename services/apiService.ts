@@ -95,14 +95,22 @@ export const apiService = {
         .eq('id', user.id)
         .select()
         .single();
-      return error ? user : { ...data, fullName: data.full_name, classId: data.class_id };
+      if (error) {
+        console.error("Error updating user:", error);
+        throw error;
+      }
+      return { ...data, fullName: data.full_name, classId: data.class_id };
     } else {
       const { data, error } = await supabase
         .from('users')
         .insert([dbUser])
         .select()
         .single();
-      return error ? user : { ...data, fullName: data.full_name, classId: data.class_id };
+      if (error) {
+        console.error("Error inserting user:", error);
+        throw error;
+      }
+      return { ...data, fullName: data.full_name, classId: data.class_id };
     }
   },
 
@@ -474,7 +482,11 @@ export const apiService = {
     return profiles;
   },
   saveProfile: async (type: 'teacher' | 'school', data: any): Promise<void> => {
-    await supabase.from('profiles').upsert({ id: type, data });
+    const { error } = await supabase.from('profiles').upsert({ id: type, data });
+    if (error) {
+      console.error("Error saving profile:", error);
+      throw error;
+    }
   },
 
   // --- Holidays ---

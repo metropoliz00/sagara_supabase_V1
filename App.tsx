@@ -716,7 +716,32 @@ const App: React.FC = () => {
   // General & Logs
   const handleSaveGrade = async (studentId: string, subjectId: string, gradeData: any, classId: string) => { if(!isDemoMode) await apiService.saveGrade(studentId, subjectId, gradeData, classId); };
   const handleCreateLog = async (log: BehaviorLog) => { setCounselingLogs([log, ...counselingLogs]); if(log.point !== 0) { const student = students.find(s => String(s.id).trim() === String(log.studentId).trim()); if(student) { const newScore = Math.min(100, Math.max(0, student.behaviorScore + log.point)); handleUpdateStudent({ ...student, behaviorScore: newScore }); } } if(!isDemoMode) await apiService.createCounselingLog(log); handleShowNotification('Data konseling berhasil disimpan!', 'success'); };
-  const handleUpdateProfile = async (type: 'teacher' | 'school', data: any) => { if (type === 'teacher') { setTeacherProfile(data); if (!currentUser) return; const updatedUser: User = { ...currentUser, fullName: data.name, nip: data.nip, nuptk: data.nuptk, birthInfo: data.birthInfo, education: data.education, position: data.position, rank: data.rank, classId: data.teachingClass, email: data.email, phone: data.phone, address: data.address, photo: data.photo, signature: data.signature }; setCurrentUser(updatedUser); if (!isDemoMode) await apiService.saveUser(updatedUser); } else { setSchoolProfile(data); if (!isDemoMode) await apiService.saveProfile('school', data); } };
+  const handleUpdateProfile = async (type: 'teacher' | 'school', data: any) => { 
+    if (type === 'teacher') { 
+      setTeacherProfile(data); 
+      if (!currentUser) return; 
+      const updatedUser: User = { ...currentUser, fullName: data.name, nip: data.nip, nuptk: data.nuptk, birthInfo: data.birthInfo, education: data.education, position: data.position, rank: data.rank, classId: data.teachingClass, email: data.email, phone: data.phone, address: data.address, photo: data.photo, signature: data.signature }; 
+      setCurrentUser(updatedUser); 
+      if (!isDemoMode) {
+        try {
+          await apiService.saveUser(updatedUser);
+          handleShowNotification('Profil guru berhasil disimpan!', 'success');
+        } catch (e) {
+          handleShowNotification('Gagal menyimpan profil guru.', 'error');
+        }
+      }
+    } else { 
+      setSchoolProfile(data); 
+      if (!isDemoMode) {
+        try {
+          await apiService.saveProfile('school', data);
+          handleShowNotification('Profil sekolah berhasil disimpan!', 'success');
+        } catch (e) {
+          handleShowNotification('Gagal menyimpan profil sekolah.', 'error');
+        }
+      }
+    } 
+  };
   
   // Holidays & Assessments
   const handleAddHoliday = async (holidaysToAdd: Omit<Holiday, 'id'>[]) => { if (isDemoMode) { const newHolidays = holidaysToAdd.map(h => ({ ...h, id: Date.now().toString() + Math.random() })); setHolidays(prev => [...prev, ...newHolidays].sort((a,b) => a.date.localeCompare(b.date))); handleShowNotification("Hari libur berhasil ditambahkan (Demo).", "success"); return; } try { await apiService.saveHolidayBatch(holidaysToAdd); handleShowNotification("Hari libur berhasil disimpan!", "success"); await fetchData(); } catch (e) { handleShowNotification("Gagal menyimpan hari libur.", "error"); } };
